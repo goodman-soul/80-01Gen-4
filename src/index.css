@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,107,26,0.06) 0%, transparent 60%),
+    linear-gradient(180deg, #1A1D23 0%, #14161A 100%);
+  background-attachment: fixed;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,107,26,0.4);
+}
+
+@layer components {
+  .industrial-card {
+    @apply relative bg-brand-steel-light border border-white/10 rounded-lg overflow-hidden;
+    background-image:
+      linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%);
+  }
+  .industrial-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-[2px];
+    background: linear-gradient(90deg, #FF6B1A 0%, transparent 100%);
+    opacity: 0.6;
+  }
+
+  .btn-industrial {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded font-medium
+           text-sm transition-all duration-150 active:translate-y-[1px]
+           border border-white/10 select-none;
+  }
+  .btn-industrial-primary {
+    @apply btn-industrial bg-brand-orange text-white border-brand-orange
+           hover:bg-brand-orange-hover hover:shadow-glow-orange;
+    box-shadow: 0 2px 0 0 #C04E0A;
+  }
+  .btn-industrial-primary:active {
+    box-shadow: 0 0 0 0 #C04E0A;
+  }
+  .btn-industrial-secondary {
+    @apply btn-industrial bg-white/5 text-white/90 hover:bg-white/10
+           border-white/15;
+  }
+  .btn-industrial-danger {
+    @apply btn-industrial bg-status-danger text-white border-status-danger
+           hover:bg-status-danger/90;
+    box-shadow: 0 2px 0 0 #991B1B;
+  }
+  .btn-industrial-success {
+    @apply btn-industrial bg-status-safe text-white border-status-safe
+           hover:bg-status-safe/90;
+    box-shadow: 0 2px 0 0 #047857;
+  }
+
+  .input-industrial {
+    @apply w-full px-3.5 py-2.5 rounded bg-brand-steel-lighter border border-white/10
+           text-white placeholder-white/30 text-sm
+           focus:outline-none focus:border-brand-orange/50 focus:ring-2 focus:ring-brand-orange/20
+           transition-all duration-150;
+  }
+
+  .tag-industrial {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+           border;
+  }
+
+  .section-header {
+    @apply flex items-center justify-between mb-5 pb-3 border-b border-white/10;
+  }
+  .section-title {
+    @apply font-display text-lg tracking-wider uppercase text-white/90;
+    letter-spacing: 0.08em;
+  }
+
+  .divider-rivet {
+    @apply relative flex items-center my-4;
+  }
+  .divider-rivet::before, .divider-rivet::after {
+    content: '';
+    @apply flex-1 h-px bg-white/10;
+  }
+  .divider-rivet span {
+    @apply w-2 h-2 rounded-full mx-3 border-2 border-brand-orange/60;
+    box-shadow: inset 0 0 0 1px #1A1D23;
+  }
+
+  .gauge-grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .map-grid-bg {
+    background-color: #0F1419;
+    background-image:
+      linear-gradient(rgba(255,107,26,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,107,26,0.04) 1px, transparent 1px),
+      radial-gradient(ellipse at 30% 40%, rgba(59,130,246,0.06) 0%, transparent 50%);
+    background-size: 40px 40px, 40px 40px, 100% 100%;
+  }
+
+  .tactile {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tactile:active {
+    transform: scale(0.98);
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  }
+
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .count-anim {
+    animation: count-up 0.5s ease-out both;
+    display: inline-block;
+  }
+}
