@@ -82,7 +82,7 @@ export interface PhotoAttachment {
   id: string;
   work_order_id: string;
   data_url: string;
-  category: 'before' | 'during' | 'after';
+  category: 'before' | 'during' | 'after' | 'gauge';
   taken_at: string;
 }
 

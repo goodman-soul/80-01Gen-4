@@ -93,9 +93,9 @@ export default function TechWorkOrder() {
   const [photosByCat, setPhotosByCat] = useState<Record<PhotoCategory, PhotoAttachment[]>>(() => {
     const base: Record<PhotoCategory, PhotoAttachment[]> = { before: [], during: [], after: [], gauge: [] };
     (wo?.photos ?? []).forEach(p => {
-      const cat = p.category === 'before' || p.category === 'during' || p.category === 'after'
+      const cat = (p.category === 'before' || p.category === 'during' || p.category === 'after' || p.category === 'gauge')
         ? p.category
-        : 'gauge';
+        : 'before';
       base[cat].push(p);
     });
     return base;
@@ -248,7 +248,7 @@ export default function TechWorkOrder() {
           id: genId(),
           work_order_id: id,
           data_url,
-          category: cat === 'gauge' ? 'after' : cat,
+          category: cat,
           taken_at: new Date().toISOString(),
         };
         savePhoto(p).catch(console.error);

@@ -28,6 +28,7 @@ import {
   Home,
 } from 'lucide-react';
 import { useAppStore } from '@/store';
+import { generatePDFReport } from '@/utils/pdfReport';
 import StatusBadge from '@/components/StatusBadge';
 import DeviceIcon from '@/components/DeviceIcon';
 import { cn } from '@/lib/utils';
@@ -67,11 +68,11 @@ const PLACEHOLDER_PHOTOS = {
     ),
 };
 
-const PHOTO_CATEGORIES: Array<{ key: keyof typeof PLACEHOLDER_PHOTOS; label: string }> = [
+const PHOTO_CATEGORIES: Array<{ key: 'before' | 'during' | 'after' | 'gauge'; label: string }> = [
   { key: 'before', label: '作业前' },
   { key: 'during', label: '作业中' },
   { key: 'after', label: '作业后' },
-  { key: 'meter', label: '仪表读数' },
+  { key: 'gauge', label: '仪表读数' },
 ];
 
 const ISSUE_TYPES = ['保养项目遗漏', '零件质量问题', '设备仍有故障', '现场清洁不到位', '其他问题'];
@@ -190,7 +191,7 @@ export default function ClientConfirm() {
   const technicians = useAppStore((s) => s.technicians);
   const updateWorkOrderStatus = useAppStore((s) => s.updateWorkOrderStatus);
 
-  const [photoCategory, setPhotoCategory] = useState<keyof typeof PLACEHOLDER_PHOTOS>('before');
+  const [photoCategory, setPhotoCategory] = useState<'before' | 'during' | 'after' | 'gauge'>('before');
   const [photoIndex, setPhotoIndex] = useState(0);
 
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -204,6 +205,7 @@ export default function ClientConfirm() {
   const [returnPhotos, setReturnPhotos] = useState<string[]>([]);
 
   const [submitted, setSubmitted] = useState<'completed' | 'returned' | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const workOrder = useMemo<WorkOrder | null>(() => {
     if (!id) return null;
@@ -225,6 +227,9 @@ export default function ClientConfirm() {
 
   const materialItems: MaterialItem[] = useMemo(() => {
     if (!workOrder) return [];
+    if (workOrder.materials && workOrder.materials.length > 0) {
+      return workOrder.materials;
+    }
     return [
       { id: 'm1', work_order_id: workOrder.id, part_name: '机油滤芯', part_no: 'FLT-OIL-001', quantity: 1, unit_price: 85 },
       { id: 'm2', work_order_id: workOrder.id, part_name: '柴油滤芯', part_no: 'FLT-FUE-004', quantity: 1, unit_price: 95 },
@@ -269,10 +274,29 @@ export default function ClientConfirm() {
     return formatDuration(min);
   }, [workOrder]);
 
+  const photosByCategory = useMemo(() => {
+    const result: Record<string, PhotoAttachment[]> = { before: [], during: [], after: [], gauge: [] };
+    if (workOrder?.photos && workOrder.photos.length > 0) {
+      workOrder.photos.forEach(p => {
+        const cat = p.category || 'before';
+        if (result[cat]) {
+          result[cat].push(p);
+        } else {
+          result['before'].push(p);
+        }
+      });
+    }
+    return result;
+  }, [workOrder]);
+
   const photoSrcs = useMemo(() => {
-    const base = PLACEHOLDER_PHOTOS[photoCategory];
-    return [base, base, base, base];
-  }, [photoCategory]);
+    const realPhotos = photosByCategory[photoCategory] || [];
+    if (realPhotos.length > 0) {
+      return realPhotos.map(p => p.data_url);
+    }
+    const fallbackKey = photoCategory === 'gauge' ? 'meter' : photoCategory;
+    return [PLACEHOLDER_PHOTOS[fallbackKey as keyof typeof PLACEHOLDER_PHOTOS]];
+  }, [photoCategory, photosByCategory]);
 
   const handleSubmitConfirm = () => {
     setShowRatingModal(true);
@@ -298,7 +322,39 @@ export default function ClientConfirm() {
 
   const handleAddReturnPhoto = () => {
     if (returnPhotos.length < 3) {
-      setReturnPhotos([...returnPhotos, PLACEHOLDER_PHOTOS.after]);
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          setReturnPhotos(prev => [...prev, String(reader.result)]);
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!workOrder || !device) return;
+    setGeneratingPdf(true);
+    try {
+      await generatePDFReport(
+        workOrder,
+        device,
+        technician,
+        materialItems,
+        submitted === 'completed' ? rating : null,
+        submitted === 'completed' ? feedbackText : null,
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -672,23 +728,34 @@ export default function ClientConfirm() {
           </div>
 
           <div className="flex gap-1.5 mb-4 p-1 rounded-lg bg-white/[0.04] border border-white/5">
-            {PHOTO_CATEGORIES.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => {
-                  setPhotoCategory(cat.key);
-                  setPhotoIndex(0);
-                }}
-                className={cn(
-                  'flex-1 py-2 px-2 rounded-md text-xs font-medium transition-all duration-150',
-                  photoCategory === cat.key
-                    ? 'bg-brand-orange text-white shadow-glow-orange'
-                    : 'text-brand-gray hover:text-white/80 hover:bg-white/5'
-                )}
-              >
-                {cat.label}
-              </button>
-            ))}
+            {PHOTO_CATEGORIES.map((cat) => {
+              const count = (photosByCategory[cat.key] || []).length;
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => {
+                    setPhotoCategory(cat.key);
+                    setPhotoIndex(0);
+                  }}
+                  className={cn(
+                    'flex-1 py-2 px-2 rounded-md text-xs font-medium transition-all duration-150 relative',
+                    photoCategory === cat.key
+                      ? 'bg-brand-orange text-white shadow-glow-orange'
+                      : 'text-brand-gray hover:text-white/80 hover:bg-white/5'
+                  )}
+                >
+                  {cat.label}
+                  {count > 0 && (
+                    <span className={cn(
+                      'ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold',
+                      photoCategory === cat.key ? 'bg-white text-brand-orange' : 'bg-brand-orange/60 text-white'
+                    )}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <div className="relative group rounded-xl overflow-hidden border border-white/8 bg-black/20 aspect-[4/3]">
@@ -938,9 +1005,13 @@ export default function ClientConfirm() {
                 报告编号：{reportNo}
               </div>
             </div>
-            <button className="btn-industrial-secondary !py-2 !px-4 gap-1.5">
-              <Download className="w-4 h-4" />
-              下载PDF报告
+            <button
+              onClick={handleDownloadPDF}
+              disabled={generatingPdf}
+              className="btn-industrial-secondary !py-2 !px-4 gap-1.5 disabled:opacity-50"
+            >
+              <Download className={cn('w-4 h-4', generatingPdf && 'animate-pulse')} />
+              {generatingPdf ? '生成中...' : '下载PDF报告'}
             </button>
           </div>
         </footer>
